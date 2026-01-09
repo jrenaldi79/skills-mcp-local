@@ -1,4 +1,4 @@
-import { MarketplaceSkill } from '../types/index.js';
+import { MarketplaceSkill, SkillSource, SkillUpdateStatus } from '../types/index.js';
 import { parseSkillFrontmatter } from '../utils/yaml-parser.js';
 import logger from '../utils/logger.js';
 
@@ -251,5 +251,91 @@ export class MarketplaceManager {
       const descMatch = skill.metadata.description.toLowerCase().includes(query);
       return nameMatch || descMatch;
     });
+  }
+
+  /**
+   * Get the latest commit hash for a skill in a marketplace
+   *
+   * @param marketplaceUrl - GitHub tree URL of the marketplace
+   * @param skillName - Name of the skill directory
+   * @returns Latest commit hash or null if not found
+   */
+  async getLatestCommit(
+    marketplaceUrl: string,
+    skillName: string
+  ): Promise<string | null> {
+    const parsed = parseGitHubUrl(marketplaceUrl);
+    if (!parsed) {
+      logger.warn('Invalid marketplace URL for commit check', { url: marketplaceUrl });
+      return null;
+    }
+
+    const { owner, repo, branch, path } = parsed;
+    const skillPath = path ? `${path}/${skillName}` : skillName;
+
+    // Use GitHub API to get commits for the skill path
+    const apiUrl = `${GITHUB_API_BASE}/repos/${owner}/${repo}/commits?path=${encodeURIComponent(skillPath)}&sha=${branch}&per_page=1`;
+
+    try {
+      const response = await fetch(apiUrl, {
+        headers: {
+          Accept: 'application/vnd.github.v3+json',
+          'User-Agent': 'skills-mcp-local',
+        },
+      });
+
+      if (!response.ok) {
+        logger.warn('GitHub commits API request failed', {
+          url: apiUrl,
+          status: response.status,
+        });
+        return null;
+      }
+
+      const commits = await response.json();
+
+      if (!Array.isArray(commits) || commits.length === 0) {
+        return null;
+      }
+
+      const latestCommit = commits[0].sha as string;
+      logger.debug('Got latest commit for skill', { skillName, commit: latestCommit });
+      return latestCommit;
+    } catch (err) {
+      logger.error('Error fetching latest commit', {
+        skillName,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Check if a skill has updates available
+   *
+   * @param source - Skill source tracking information
+   * @returns Update status with hasUpdate flag
+   */
+  async checkForUpdates(source: SkillSource): Promise<SkillUpdateStatus> {
+    const remoteCommit = await this.getLatestCommit(
+      source.marketplaceUrl,
+      source.skillPath
+    );
+
+    if (!remoteCommit) {
+      return {
+        hasUpdate: false,
+        localCommit: source.commitHash,
+        error: 'Could not fetch latest commit from marketplace',
+      };
+    }
+
+    const hasUpdate = remoteCommit !== source.commitHash;
+
+    return {
+      hasUpdate,
+      localCommit: source.commitHash,
+      remoteCommit,
+    };
   }
 }

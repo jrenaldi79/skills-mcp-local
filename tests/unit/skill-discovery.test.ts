@@ -1,6 +1,6 @@
 import path from 'path';
 import { SkillDiscoveryManager } from '../../src/managers/skill-discovery.js';
-import { InstalledSkill } from '../../src/types/index.js';
+import { InstalledSkill, SkillSource, SkillUpdateStatus } from '../../src/types/index.js';
 
 // Use fixtures directory for testing
 const FIXTURES_DIR = path.join(process.cwd(), 'tests', 'fixtures', 'skills');
@@ -147,6 +147,103 @@ describe('SkillDiscoveryManager', () => {
 
       expect(description).toContain('my-skill');
       expect(description).toContain('My skill');
+    });
+
+    it('should show update available indicator for skills with updates', () => {
+      const skills: InstalledSkill[] = [
+        {
+          metadata: { name: 'outdated-skill', description: 'A skill with updates' },
+          location: '/home/user/skills/outdated-skill',
+          hasScripts: false,
+          hasReferences: false,
+          hasAssets: false,
+          isValid: true,
+          source: {
+            marketplaceUrl: 'https://github.com/test/repo/tree/main/skills',
+            skillPath: 'outdated-skill',
+            installedAt: '2025-01-01T00:00:00.000Z',
+            commitHash: 'abc123',
+          },
+          updateStatus: {
+            hasUpdate: true,
+            localCommit: 'abc123',
+            remoteCommit: 'def456',
+          },
+        },
+      ];
+
+      const description = manager.generateToolDescription(skills);
+
+      expect(description).toContain('outdated-skill');
+      expect(description).toMatch(/update.*available/i);
+    });
+
+    it('should not show update indicator for skills without updates', () => {
+      const skills: InstalledSkill[] = [
+        {
+          metadata: { name: 'current-skill', description: 'An up-to-date skill' },
+          location: '/home/user/skills/current-skill',
+          hasScripts: false,
+          hasReferences: false,
+          hasAssets: false,
+          isValid: true,
+          source: {
+            marketplaceUrl: 'https://github.com/test/repo/tree/main/skills',
+            skillPath: 'current-skill',
+            installedAt: '2025-01-01T00:00:00.000Z',
+            commitHash: 'abc123',
+          },
+          updateStatus: {
+            hasUpdate: false,
+            localCommit: 'abc123',
+            remoteCommit: 'abc123',
+          },
+        },
+      ];
+
+      const description = manager.generateToolDescription(skills);
+
+      expect(description).toContain('current-skill');
+      // Should not contain update notification for this skill specifically
+      expect(description).not.toMatch(/current-skill.*update.*available/i);
+    });
+
+    it('should show summary of skills with updates available', () => {
+      const skills: InstalledSkill[] = [
+        {
+          metadata: { name: 'skill-a', description: 'Skill A' },
+          location: '/home/user/skills/skill-a',
+          hasScripts: false,
+          hasReferences: false,
+          hasAssets: false,
+          isValid: true,
+          updateStatus: { hasUpdate: true, localCommit: 'a', remoteCommit: 'b' },
+        },
+        {
+          metadata: { name: 'skill-b', description: 'Skill B' },
+          location: '/home/user/skills/skill-b',
+          hasScripts: false,
+          hasReferences: false,
+          hasAssets: false,
+          isValid: true,
+          updateStatus: { hasUpdate: true, localCommit: 'c', remoteCommit: 'd' },
+        },
+        {
+          metadata: { name: 'skill-c', description: 'Skill C' },
+          location: '/home/user/skills/skill-c',
+          hasScripts: false,
+          hasReferences: false,
+          hasAssets: false,
+          isValid: true,
+          updateStatus: { hasUpdate: false, localCommit: 'e', remoteCommit: 'e' },
+        },
+      ];
+
+      const description = manager.generateToolDescription(skills);
+
+      // Should mention multiple skills have updates
+      expect(description).toMatch(/2.*skill.*update/i);
+      expect(description).toContain('skills_update');
     });
   });
 });

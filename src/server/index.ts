@@ -9,7 +9,46 @@ import { InstallInputSchema, handleInstall, InstallInput } from '../tools/instal
 import { ConfigureInputSchema, handleConfigure, ConfigureInput } from '../tools/configure.js';
 import { GetInfoInputSchema, handleGetInfo, GetInfoInput } from '../tools/get-info.js';
 import { OnboardingInputSchema, handleOnboarding } from '../tools/onboarding.js';
+import { UpdateInputSchema, handleUpdate, UpdateInput } from '../tools/update.js';
 import logger from '../utils/logger.js';
+
+/**
+ * Check for updates on skills that have source tracking
+ */
+async function checkSkillUpdates(
+  skills: import('../types/index.js').InstalledSkill[],
+  marketplaceManager: MarketplaceManager
+): Promise<void> {
+  const trackableSkills = skills.filter(s => s.source);
+
+  if (trackableSkills.length === 0) {
+    return;
+  }
+
+  logger.debug('Checking for skill updates', { count: trackableSkills.length });
+
+  // Check updates in parallel (with rate limit consideration)
+  const updatePromises = trackableSkills.map(async (skill) => {
+    if (!skill.source) return;
+
+    try {
+      const status = await marketplaceManager.checkForUpdates(skill.source);
+      skill.updateStatus = status;
+    } catch (err) {
+      logger.debug('Update check failed for skill', {
+        name: skill.metadata.name,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  });
+
+  await Promise.all(updatePromises);
+
+  const updatesAvailable = trackableSkills.filter(s => s.updateStatus?.hasUpdate).length;
+  if (updatesAvailable > 0) {
+    logger.info('Updates available', { count: updatesAvailable });
+  }
+}
 
 /**
  * Create and configure the MCP server with all tools
@@ -22,6 +61,10 @@ export async function createServer(): Promise<McpServer> {
 
   // Discover skills at startup for dynamic description
   const installedSkills = await discoveryManager.discoverAllSkills();
+
+  // Check for updates (populates updateStatus on skills)
+  await checkSkillUpdates(installedSkills, marketplaceManager);
+
   const dynamicDescription = discoveryManager.generateToolDescription(installedSkills);
 
   // Create server
@@ -169,8 +212,31 @@ Provides educational information about:
     }
   );
 
+  server.registerTool(
+    'skills_update',
+    {
+      title: 'Update Skills',
+      description: `Update installed skills from their marketplace sources.
+
+Checks for updates and downloads newer versions of skills.
+Provide a skill_name to update a specific skill, or omit to update all.
+Only skills installed via skills_install can be updated.`,
+      inputSchema: UpdateInputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
+    },
+    async (args: UpdateInput) => {
+      logger.debug('Executing skills_update', { args });
+      return handleUpdate(discoveryManager, marketplaceManager, args);
+    }
+  );
+
   logger.info('MCP server created', {
-    tools: 6,
+    tools: 7,
     installedSkills: installedSkills.length,
   });
 

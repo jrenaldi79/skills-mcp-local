@@ -1,5 +1,5 @@
 import { MarketplaceManager, parseGitHubUrl } from '../../src/managers/marketplace.js';
-import { MarketplaceSkill } from '../../src/types/index.js';
+import { MarketplaceSkill, SkillSource, SkillUpdateStatus } from '../../src/types/index.js';
 
 describe('MarketplaceManager', () => {
   let manager: MarketplaceManager;
@@ -146,6 +146,82 @@ describe('MarketplaceManager', () => {
       const filtered = manager.filterSkills(mockSkills, 'nonexistent');
 
       expect(filtered).toEqual([]);
+    });
+  });
+
+  describe('getLatestCommit', () => {
+    it('should return null for invalid marketplace URL', async () => {
+      const result = await manager.getLatestCommit('https://invalid-url.com', 'skill-name');
+
+      expect(result).toBeNull();
+    });
+
+    it('should handle network errors gracefully', async () => {
+      const result = await manager.getLatestCommit(
+        'https://github.com/nonexistent-owner-xyz/nonexistent-repo-xyz/tree/main/skills',
+        'nonexistent-skill'
+      );
+
+      // Should not throw, just return null
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('checkForUpdates', () => {
+    it('should return hasUpdate false when commits match', async () => {
+      const source: SkillSource = {
+        marketplaceUrl: 'https://github.com/test/repo/tree/main/skills',
+        skillPath: 'test-skill',
+        installedAt: '2025-01-09T12:00:00.000Z',
+        commitHash: 'abc123',
+      };
+
+      // Mock the getLatestCommit to return same hash
+      const mockManager = new MarketplaceManager();
+      mockManager.getLatestCommit = async () => 'abc123';
+
+      const result = await mockManager.checkForUpdates(source);
+
+      expect(result.hasUpdate).toBe(false);
+      expect(result.localCommit).toBe('abc123');
+      expect(result.remoteCommit).toBe('abc123');
+    });
+
+    it('should return hasUpdate true when commits differ', async () => {
+      const source: SkillSource = {
+        marketplaceUrl: 'https://github.com/test/repo/tree/main/skills',
+        skillPath: 'test-skill',
+        installedAt: '2025-01-09T12:00:00.000Z',
+        commitHash: 'abc123',
+      };
+
+      // Mock the getLatestCommit to return different hash
+      const mockManager = new MarketplaceManager();
+      mockManager.getLatestCommit = async () => 'def456';
+
+      const result = await mockManager.checkForUpdates(source);
+
+      expect(result.hasUpdate).toBe(true);
+      expect(result.localCommit).toBe('abc123');
+      expect(result.remoteCommit).toBe('def456');
+    });
+
+    it('should return error when remote commit cannot be fetched', async () => {
+      const source: SkillSource = {
+        marketplaceUrl: 'https://github.com/test/repo/tree/main/skills',
+        skillPath: 'test-skill',
+        installedAt: '2025-01-09T12:00:00.000Z',
+        commitHash: 'abc123',
+      };
+
+      // Mock the getLatestCommit to return null
+      const mockManager = new MarketplaceManager();
+      mockManager.getLatestCommit = async () => null;
+
+      const result = await mockManager.checkForUpdates(source);
+
+      expect(result.hasUpdate).toBe(false);
+      expect(result.error).toBeDefined();
     });
   });
 });

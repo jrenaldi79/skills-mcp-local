@@ -87,6 +87,7 @@ Instructions for using this skill...
 - \`skills_list_installed\` - List local skills
 - \`skills_discover\` - Browse marketplace
 - \`skills_install\` - Install a skill
+- \`skills_update\` - Update installed skills
 - \`skills_configure_marketplace\` - Manage marketplaces
 - \`skills_get_info\` - Get skill details
 - \`skills_onboarding\` - This guide

@@ -28,6 +28,36 @@ export interface ParseResult<T> {
 }
 
 /**
+ * Tracks where a skill was installed from for update detection
+ */
+export interface SkillSource {
+  /** The marketplace URL the skill was installed from */
+  marketplaceUrl: string;
+  /** The skill's path within the marketplace (e.g., 'pdf-helper') */
+  skillPath: string;
+  /** ISO timestamp when the skill was installed */
+  installedAt: string;
+  /** Git commit hash at time of installation */
+  commitHash: string;
+  /** Git branch (optional, defaults to main) */
+  branch?: string;
+}
+
+/**
+ * Update status for a skill
+ */
+export interface SkillUpdateStatus {
+  /** Whether an update is available */
+  hasUpdate: boolean;
+  /** Current local commit hash */
+  localCommit?: string;
+  /** Latest remote commit hash */
+  remoteCommit?: string;
+  /** Error message if update check failed */
+  error?: string;
+}
+
+/**
  * Installed skill with full context
  */
 export interface InstalledSkill {
@@ -44,6 +74,10 @@ export interface InstalledSkill {
   isValid: boolean;
   /** Validation errors if any */
   validationErrors?: string[];
+  /** Source tracking information (if installed via marketplace) */
+  source?: SkillSource;
+  /** Update status (populated during update checks) */
+  updateStatus?: SkillUpdateStatus;
 }
 
 /**

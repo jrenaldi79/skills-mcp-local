@@ -3,6 +3,7 @@ import path from 'path';
 import { InstalledSkill, SkillMetadata } from '../types/index.js';
 import { parseSkillFrontmatter } from '../utils/yaml-parser.js';
 import { getSkillSearchPaths } from '../utils/paths.js';
+import { SkillSourceManager } from './skill-source.js';
 import logger from '../utils/logger.js';
 
 /**
@@ -69,6 +70,10 @@ export class SkillDiscoveryManager {
     const hasReferences = await this.directoryExists(path.join(skillDir, 'references'));
     const hasAssets = await this.directoryExists(path.join(skillDir, 'assets'));
 
+    // Load source tracking information if available
+    const sourceManager = new SkillSourceManager();
+    const source = await sourceManager.getSource(skillDir);
+
     if (parseResult.success && parseResult.data) {
       return {
         metadata: parseResult.data,
@@ -77,6 +82,7 @@ export class SkillDiscoveryManager {
         hasReferences,
         hasAssets,
         isValid: true,
+        source: source ?? undefined,
       };
     } else {
       // Create a fallback metadata for invalid skills
@@ -94,6 +100,7 @@ export class SkillDiscoveryManager {
         hasAssets,
         isValid: false,
         validationErrors: [parseResult.error || 'Unknown parsing error'],
+        source: source ?? undefined,
       };
     }
   }
@@ -190,9 +197,27 @@ Call this tool to refresh the skill list.`;
       '',
     ];
 
+    // Track skills with updates
+    const skillsWithUpdates: string[] = [];
+
     for (const skill of validSkills) {
       lines.push(`- ${skill.metadata.name}: ${skill.metadata.description}`);
       lines.push(`  Location: ${skill.location}/`);
+
+      // Check if skill has an update available
+      if (skill.updateStatus?.hasUpdate) {
+        lines.push(`  ⚠️ Update available`);
+        skillsWithUpdates.push(skill.metadata.name);
+      }
+
+      lines.push('');
+    }
+
+    // Add summary if there are updates available
+    if (skillsWithUpdates.length > 0) {
+      const skillWord = skillsWithUpdates.length === 1 ? 'skill has' : 'skills have';
+      lines.push(`⚠️ ${skillsWithUpdates.length} ${skillWord} updates available: ${skillsWithUpdates.join(', ')}`);
+      lines.push('Use skills_update to upgrade.');
       lines.push('');
     }
 

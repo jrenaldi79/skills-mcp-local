@@ -5,6 +5,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { MarketplaceManager, parseGitHubUrl } from '../managers/marketplace.js';
 import { ConfigManager } from '../managers/config.js';
+import { SkillSourceManager } from '../managers/skill-source.js';
 import { getDefaultInstallPath } from '../utils/paths.js';
 import { parseSkillFrontmatter } from '../utils/yaml-parser.js';
 import logger from '../utils/logger.js';
@@ -106,12 +107,27 @@ export async function handleInstall(
     await execAsync(`git -C "${tempDir}" sparse-checkout set "${skillPath}"`);
     await execAsync(`git -C "${tempDir}" checkout ${branch}`);
 
+    // Get the commit hash for source tracking
+    const { stdout: commitHash } = await execAsync(`git -C "${tempDir}" rev-parse HEAD`);
+    const cleanCommitHash = commitHash.trim();
+
     // Move skill to final location
     const sourceDir = path.join(tempDir, skillPath);
     await fs.rename(sourceDir, skillDir);
 
     // Clean up temp directory
     await fs.rm(tempDir, { recursive: true, force: true });
+
+    // Save source tracking information
+    const sourceManager = new SkillSourceManager();
+    const sourceInfo = sourceManager.createSource(
+      skill.marketplaceUrl,
+      args.skill_name,
+      cleanCommitHash,
+      branch
+    );
+    await sourceManager.saveSource(skillDir, sourceInfo);
+    logger.debug('Saved skill source tracking', { skill: args.skill_name, commit: cleanCommitHash });
 
     // Validate installed skill
     const skillMdPath = path.join(skillDir, 'SKILL.md');
@@ -134,7 +150,11 @@ export async function handleInstall(
         description: parseResult.data!.description,
         location: skillDir,
       },
-      source: skill.marketplaceUrl,
+      source: {
+        marketplaceUrl: skill.marketplaceUrl,
+        commitHash: cleanCommitHash,
+        branch,
+      },
     };
 
     return {
