@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires poppler-utils for PDF processing
 metadata:
   author: skills-mcp-local
-  version: "1.0.0"
+  version: "0.1.0"
   category: documents
 ---
 
