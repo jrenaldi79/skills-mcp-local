@@ -1,17 +1,23 @@
 ---
 name: sample-skill
-description: A sample skill demonstrating the skill format and structure for marketplace testing.
+description: A sample skill demonstrating the skill format and structure for marketplace testing. Now with v2.0 features!
 license: MIT
 compatibility: Works with Claude Code and other MCP-compatible clients
 metadata:
   author: skills-mcp-local
-  version: "1.0.0"
+  version: "2.0.0"
   category: examples
 ---
 
 # Sample Skill
 
 This is a sample skill included in the skills-mcp-local repository for testing marketplace functionality.
+
+## What's New in v2.0
+
+- Added update detection support
+- Improved documentation
+- New example workflows
 
 ## Overview
 
@@ -27,5 +33,6 @@ This skill is primarily for testing and demonstration purposes.
 
 Use this skill when:
 - Testing the skills marketplace discovery
+- Testing skill updates and version management
 - Learning the skill file format
 - Developing new MCP server features
