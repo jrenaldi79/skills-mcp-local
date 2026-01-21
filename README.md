@@ -13,21 +13,39 @@ A Model Context Protocol (MCP) server that discovers and manages local skills fo
 
 ## Installation
 
+### Via npm (Recommended)
+
 ```bash
-# Clone the repository
+npm install -g @presto-ai/skills-mcp-local
+```
+
+### From Source
+
+```bash
 git clone https://github.com/jrenaldi79/skills-mcp-local.git
 cd skills-mcp-local
-
-# Install dependencies
 npm install
-
-# Build
 npm run build
 ```
 
 ## Configuration
 
-Add to your MCP client configuration:
+Add to your Claude Code MCP configuration (`~/.claude/claude_desktop_config.json`):
+
+### If installed via npm
+
+```json
+{
+  "mcpServers": {
+    "skills": {
+      "command": "npx",
+      "args": ["@presto-ai/skills-mcp-local"]
+    }
+  }
+}
+```
+
+### If installed from source
 
 ```json
 {
