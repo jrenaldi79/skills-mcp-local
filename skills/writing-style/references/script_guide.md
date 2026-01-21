@@ -59,18 +59,27 @@ Scripts for LinkedIn content analysis pipeline.
 
 | Script | Purpose | Input | Output |
 |--------|---------|-------|--------|
-| `fetch_linkedin_mcp.py` | Automated fetch with verification | Full profile URL | linkedin_data/*.json |
-| `filter_linkedin.py` | Quality gate | linkedin_data/ | filtered/ |
+| `fetch_linkedin_direct.py` | Direct API fetch with auto-search | Profile URL | linkedin_data/*.json |
+| `filter_linkedin.py` | Quality gate (>200 chars) | linkedin_data/ | filtered/ |
 | `cluster_linkedin.py` | Unify voice (v2 schema) | filtered/ | linkedin_persona.json |
-| `prepare_llm_analysis.py` | Export for LLM analysis | filtered/ + persona | llm_analysis_input.md |
-| `merge_llm_analysis.py` | Merge LLM output | llm_output.json | linkedin_persona.json |
+
+### fetch_linkedin_direct.py Options
+
+| Option | Description |
+|--------|-------------|
+| `--check` | Verify BrightData MCP is configured |
+| `--profile <url>` | LinkedIn profile URL or username |
+| `--limit <n>` | Max posts to fetch (default: 20) |
+| `--min-posts <n>` | Auto-search if below threshold (recommended: 15) |
+| `--search-queries` | Comma-separated search terms |
+| `--search-engines` | google, bing, or both (default: google) |
+| `--search-only` | Skip activity feed, use only search |
+| `--status` | Show current fetch status |
 
 **LinkedIn workflow:**
-1. `fetch_linkedin_mcp.py --profile <URL>` - Fetch posts with verification
+1. `fetch_linkedin_direct.py --profile <URL> --min-posts 15` - Fetch with auto-search
 2. `filter_linkedin.py` - Remove low-quality posts
-3. `cluster_linkedin.py` - Generate unified persona
-4. (Optional) `prepare_llm_analysis.py` - Export for semantic enrichment
-5. (Optional) `merge_llm_analysis.py` - Merge LLM results back
+3. `cluster_linkedin.py` - Generate unified persona (with quality warnings)
 
 **See complete LinkedIn workflow:** [linkedin_workflow.md](linkedin_workflow.md)
 

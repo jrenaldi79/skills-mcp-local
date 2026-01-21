@@ -123,25 +123,53 @@ export MCP_TOKEN="your-brightdata-api-token"
 cd ~/Documents/my-writing-style
 
 # Verify BrightData MCP is configured
-venv/bin/python3 fetch_linkedin_mcp.py --check
+venv/bin/python3 fetch_linkedin_direct.py --check
 
-# Fetch posts (fully automated with built-in verification)
-venv/bin/python3 fetch_linkedin_mcp.py --profile "https://linkedin.com/in/username" --limit 20
+# Basic fetch (uses activity feed only)
+venv/bin/python3 fetch_linkedin_direct.py --profile "https://linkedin.com/in/username" --limit 20
+
+# Recommended: Auto-search for more posts if below threshold
+venv/bin/python3 fetch_linkedin_direct.py --profile "username" --min-posts 15
+
+# Manual search with custom queries
+venv/bin/python3 fetch_linkedin_direct.py --profile "username" --search-queries "company,topic1,topic2"
 
 # Filter quality posts (min 200 chars)
 venv/bin/python3 filter_linkedin.py
 
-# Generate unified persona (NO clustering - single voice)
+# Generate unified persona (with quality warnings)
 venv/bin/python3 cluster_linkedin.py
 ```
 
-**How it works:**
-1. **Profile Verification:** Scrapes profile to verify identity
-2. **Smart Search:** Uses disambiguating terms to find posts AND articles
-3. **Parallel Scraping:** Fetches posts in parallel (5 concurrent)
-4. **Content Types:** Captures short-form posts + long-form articles
-5. **Validation:** Filters out posts from wrong people
-6. **State Tracking:** Saves progress for resume/debugging
+### Fetch Options
+
+| Option | Description |
+|--------|-------------|
+| `--profile <url>` | LinkedIn profile URL or username (required) |
+| `--limit <n>` | Max posts to fetch (default: 20) |
+| `--min-posts <n>` | Auto-search if activity returns fewer than n posts |
+| `--search-queries` | Comma-separated search terms (e.g., "jiobit,google") |
+| `--search-engines` | google, bing, or both (default: google) |
+| `--search-only` | Skip activity feed, use only search discovery |
+
+### How It Works
+
+1. **Direct API:** Uses BrightData's `web_data_linkedin_person_profile` API
+2. **Activity Feed:** Extracts post URLs from profile activity (limited to ~10-20 recent items)
+3. **Ownership Filter:** Only includes posts authored by the user (filters out likes/shares)
+4. **Auto-Search Fallback:** If `--min-posts` set and activity < threshold, auto-generates search queries
+5. **Smart Queries:** Extracts company names and keywords from profile for search
+6. **Parallel Scraping:** Fetches posts in parallel (5 concurrent workers)
+7. **Quality Warnings:** Alerts when post count is below recommended (15-20)
+
+### Quality Thresholds
+
+| Post Count | Quality | Impact |
+|------------|---------|--------|
+| < 5 | VERY LOW | Persona unreliable |
+| 5-9 | LOW | Important patterns missed |
+| 10-14 | BELOW RECOMMENDED | Confidence reduced |
+| 15-20+ | GOOD | Full voice capture |
 
 **Why full URL matters:**
 - Common names return multiple profiles
