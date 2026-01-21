@@ -49,6 +49,81 @@ venv/bin/python3 -m pip install -r requirements.txt
 
 ---
 
+## Windows Setup Issues
+
+### Pre-flight Check
+
+Before running the pipeline on Windows, use the preflight check:
+
+```powershell
+python preflight_check.py
+```
+
+This validates Python version, npx availability, and data directory access.
+
+### "ModuleNotFoundError: No module named 'config'"
+
+**Cause:** Windows handles Python module paths differently. Local imports fail without sys.path fix.
+
+**Fix:** All scripts now include automatic path configuration. If you have an older version:
+
+```python
+# Add at top of script (after imports like sys, pathlib)
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+```
+
+### "'npx' is not recognized as an internal or external command"
+
+**Cause:** Node.js not installed or not in PATH.
+
+**Fix:**
+
+1. Install Node.js from https://nodejs.org (LTS version recommended)
+2. Restart your terminal/PowerShell after installation
+3. Verify with: `npx --version`
+
+**Note:** On Windows, `npx.cmd` is used automatically by the scripts.
+
+### "UnicodeEncodeError" or garbled console output
+
+**Cause:** Windows console doesn't support UTF-8 emojis by default.
+
+**Fix:** Scripts now use ASCII-only output. If you see this error with an older version:
+
+1. Update to latest version (emojis replaced with ASCII like `[OK]`, `[ERROR]`)
+2. Or set UTF-8 in PowerShell: `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8`
+
+### Python not found or wrong version
+
+**Cause:** Python not installed or using system Python.
+
+**Fix:**
+
+1. Install Python 3.10+ from https://www.python.org/downloads/
+2. Check "Add Python to PATH" during installation
+3. Create virtual environment:
+   ```powershell
+   python -m venv venv
+   venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+
+### Permission errors with data directory
+
+**Cause:** Cannot create/write to default data directory.
+
+**Fix:** Set custom data location via environment variable:
+
+```powershell
+$env:WRITING_STYLE_DATA = "C:\Users\YourName\writing-style-data"
+```
+
+Or add to your PowerShell profile for persistence.
+
+---
+
 ## State Management Issues
 
 ### "State not found"
